@@ -236,7 +236,7 @@ msg = 'Reading COSMOS catalog.'
 PrintAndLog(msg, logfile)
 
 # Read in parameters from COSMOS catalog.
-mags, models = ReadModelCatalog('../../COSMOS/asu.csv')
+mags, models = ReadModelCatalog('../COSMOS/asu.csv')
 
 msg = 'Done reading COSMOS catalog. min mag: %f, max mag: %f, # Models: %f' % (min(mags), max(mags), len(mags))
 PrintAndLog(msg, logfile)
