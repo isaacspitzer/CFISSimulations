@@ -374,8 +374,10 @@ for i in range(numCopiesOfImage):
 	fullImages[i].write('../Runs/%s/FullImage-%i-%i-%i-%i.fits' % (runName, coreNum, imageNum, i, ccdNum))
 
 	if variables['write_noiseless_file'] == 1:
-		calColumns -= noiseImage
-        	calColumns.write('../Runs/%s/FullImageNoNoise-%i-%i-%i-%i.fits' % (runName, coreNum, imageNum, i, ccdNum))
+		noiseless = galsim.ImageF(variables['image_size_x'], variables['image_size_y'])
+		noiseless = fullImages[i]
+		noiseless -= noiseImage
+        	noiseless.write('../Runs/%s/FullImageNoNoise-%i-%i-%i-%i.fits' % (runName, coreNum, imageNum, i, ccdNum))
 
         #fullImages[i] -= noiseImage
         #fullImages[i].write('../Runs/%s/FullImageNoNoise-%i-%i-%i.fits' % (runName, coreNum, imageNum, i))
@@ -398,8 +400,6 @@ if int(variables['write_weight_map']) == 1:
 if int(variables['write_flags_map']) == 1:
 	flagsMap = galsim.ImageF(variables['image_size_x'], variables['image_size_y'])
 	flagsMap.setZero()
-	# TODO: Right now, flag maps are set to 1.  Need to correct this.
-	flagsMap += 1.0
 	flagsMap.write('../Runs/%s/FullImage-%i-%i-%i-%i-Flags.fits' % (runName, coreNum, imageNum, i, ccdNum))
 
 logfile.close()
