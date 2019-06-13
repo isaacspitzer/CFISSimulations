@@ -252,7 +252,7 @@ galCount = 0
 numRotations = int(variables['num_rotations'])
 galDensityBoostFactor = 1.0
 if variables['gal_density_target'] > 0.0:
-	galDensityBoostFactor = variables['gal_density_target'] / (quad(NumGalaxiesPerSquareDegree, 0, variables['mag_max'])[0] / 3600) #This constant is the integral of the number density function from 0->mag_max (Fenech Conti)
+	galDensityBoostFactor = variables['gal_density_target'] / (quad(NumGalaxiesPerSquareDegree, 0, variables['mag_max'])[0] / 3600.0) #This constant is the integral of the number density function from 0->mag_max (Fenech Conti)
 
 catalogFile = open(catalogFilename, 'w')
 catalogFile.write('Gal#, X, Y, r-Mag, HLR,  Sersic Index, e1 (intrinsic), e2 (intrinsic) \n')
@@ -325,7 +325,9 @@ PrintAndLog(msg, logfile)
 starCount = 0
 leftovers = 0.0
 
-starDensityBoostFactor = 2500. / quad(NumStarsPerSquareDegree, 0, 26)[0]
+starDensityBoostFactor = 1.0
+if variables['star_density_target'] > 0.0:
+	starDensityBoostFactor = variables['star_density_target'] / (quad(NumStarsPerSquareDegree, 0, variables['mag_max'])[0] / 3600.0)
 
 for mag in partitionMags:
 
