@@ -8,6 +8,8 @@ from shutil import copyfile
 import sys
 from UtilityFunctions import ReadVariables
 
+from scipy.integrate import quad
+
 # Class for galaxy models.
 class Galaxy:
 	halfLightRadius = 0.0
@@ -93,13 +95,13 @@ def ReadModelCatalog(filename):
 
         # Skip past the description lines.
         gemsfile.readline()
-        line = gemsfile.readline()    
-        
+        line = gemsfile.readline()
+
         # Keep track of the relevant parameters for all COSMOS galaxies with a reduced Chi^2 of less than 'minChi2'.
         while line:
                 data = line.split(',')
 
-                # Uncomment these lines if using COSMOS catalog.	
+                # Uncomment these lines if using COSMOS catalog.
                 #chi2 = float(data[59])
                 #cla = int(float(data[21]))
 
@@ -132,7 +134,7 @@ def ReadModelCatalog(filename):
                         hlr = hlr * variables['aegis_pixel_scale'] # AEGIS pixel scale
 
                 hlr = hlr
-	
+
                 sMag = data[4]
                 mag = 0.0
 
@@ -147,7 +149,7 @@ def ReadModelCatalog(filename):
 		# Filter out stars and other anomolous items.  GalSim can only handle Sersic indices between 0.3 and 6.2 inclusive (galsim-developers.github.io/GalSim/classgalsim_1_1base_1_1_sersic.html)
                 if mag > 0.0 and hlr > 0.0 and hlr < 3.0 and sInd >= 0.3 and sInd <= 6.2 and starProb < 0.2 and objClass.find('Star') == -1 and objClass.find('QSO') == -1:
                         mags.append(mag)
-                        models.append(Galaxy(hlr, sInd, 0.0, 0, 0, mag, axisRatio))			
+                        models.append(Galaxy(hlr, sInd, 0.0, 0, 0, mag, axisRatio))
 
                 line = gemsfile.readline()
 
@@ -174,7 +176,7 @@ def AddGalaxyToCatalog(mag, hlr, sersicIndex, e1, e2, galCount, numRotations, ca
 		sin2Phi = np.sin(2.0 * angleToRotate * j)
 		rotation = np.matrix('%f %f;%f %f' % (-1.0 * cos2Phi, -1.0 * sin2Phi, sin2Phi, -1.0 * cos2Phi))
 		newShape = shape.dot(rotation)
-		
+
 		newE1 = newShape.item(0)
 		newE2 = newShape.item(1)
 
@@ -251,7 +253,7 @@ galCount = 0
 numRotations = int(variables['num_rotations'])
 galDensityBoostFactor = 1.0
 if variables['gal_density_target'] > 0.0:
-	galDensityBoostFactor = variables['gal_density_target'] / 19.776 #This constant is the integral of the number density function from 0->24.5 (Fenech Conti)
+	galDensityBoostFactor = variables['gal_density_target'] / (quad(NumGalaxiesPerSquareDegree, 0, variables['mag_max'])[0] / 3600)  #19.776 #This constant is the integral of the number density function from 0->24.5 (Fenech Conti)
 
 catalogFile = open(catalogFilename, 'w')
 catalogFile.write('Gal#, X, Y, r-Mag, HLR,  Sersic Index, e1 (intrinsic), e2 (intrinsic) \n')
@@ -291,7 +293,7 @@ for i in range(len(modelMagLists)):
 	numGalaxies = numGalaxies + leftovers
 
 	# If we want multiple rotations of the same galaxy, reduce the number of models to draw.
-	numUniqueGalaxies = int(numGalaxies / variables['num_rotations']) 
+	numUniqueGalaxies = int(numGalaxies / variables['num_rotations'])
 	print('Number of unique galaxy models to use: %i' % numUniqueGalaxies)
 
 	# If there were 5 galaxies to add, but we have 4 rotations, then 1 galaxy is not added.  Add it to the next bin.  This is really only important for low magnitude galaxies where the counts are low.
@@ -303,7 +305,7 @@ for i in range(len(modelMagLists)):
 		galInd = random.uniform(0, len(modelMagLists[i]) - 1)
 		model = modelMagLists[i][int(galInd)]
 
-		# Draw the ellipticities from a Gaussian with dispersion = variables['ellipticity_dispersion']		
+		# Draw the ellipticities from a Gaussian with dispersion = variables['ellipticity_dispersion']
 		e1, e2 = DrawEllipticity()
 
 		# Because half-light radius depends on axis ratio, we need to figure out the axis ratio first to correct the HLR.
@@ -323,13 +325,17 @@ PrintAndLog(msg, logfile)
 
 starCount = 0
 leftovers = 0.0
+
+starDensityBoostFactor = 2500. / quad(NumStarsPerSquareDegree, 0, 26)[0]
+
 for mag in partitionMags:
 
 	# If we're past the requested magnitude, stop making stars.
 	if mag > variables['mag_max']:
 		break
-            
-        numStars = NumStarsPerSquareDegree(mag) * imageAreaDegrees * galDensityBoostFactor * variables['mag_step']
+
+        numStars = NumStarsPerSquareDegree(mag) * imageAreaDegrees * starDensityBoostFactor * variables['mag_step']
+        #numStars = NumStarsPerSquareDegree(mag) * imageAreaDegrees * galDensityBoostFactor * variables['mag_step']
         remainder = numStars % 1.0
         leftovers = leftovers + remainder
         numStars = int(numStars + leftovers)
