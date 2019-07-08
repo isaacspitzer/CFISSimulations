@@ -4,6 +4,7 @@ import numpy as np
 import os
 import random
 from scipy.integrate import quad
+from scipy.stats import rv_continuous
 import scipy.stats as stats
 from shutil import copyfile
 import sys
@@ -44,6 +45,10 @@ def NumGalaxiesPerSquareDegree(rMag):
 # This function is based off of Gao, S. (2013).
 def NumStarsPerSquareDegree(rMag):
 	return 0.1215512948 * math.exp(0.3680992382 * rMag)
+
+# Integrated to correct the image area for the cos(dec) term.
+def AreaAdjustment(dec, width):
+	return width * math.cos(dec)
 
 # Return the image area in degrees squared.
 def GetImageArea(x, y, pixScale):
@@ -168,7 +173,10 @@ def AddGalaxyToCatalog(mag, hlr, sersicIndex, e1, e2, galCount, numRotations, ca
 	# Generate new positions and orientations for this galaxy.
 	for j in range(numRotations):
 		posX = random.uniform(0, catWidth) + variables['minRA']
-                posY = random.uniform(0, catHeight) + variables['minDec']
+                #posY = random.uniform(0, catHeight) + variables['minDec']
+		# The declination should be drawn from a cosine distribution so that the regions
+		#  closer to the poles don't get overcrowded.
+		posY = math.degrees(cosDist.rvs(size=1)[0])
 
 		# Rotate the e1, e2 values.
 		cos2Phi = np.cos(2.0 * angleToRotate * j)
@@ -190,9 +198,15 @@ def AddStarToCatalog(starNum, mag, e1, e2, catalogFile, catWidth, catHeight):
 	imageSeeing = variables['seeing']
 
         posX = random.uniform(0, catWidth) + variables['minRA']
-        posY = random.uniform(0, catHeight) + variables['minDec']
+        posY = math.degrees(cosDist.rvs(size=1)[0])
 
         catalogFile.write('%i %f %f %f %f %f %f %f\n' % (starNum, posX, posY, mag, imageSeeing, -1, e1, e2))
+
+def cosFunction(dec):
+	return (np.radians(variables['maxRA']) - np.radians(variables['minRA'])) * np.cos(dec)
+
+def CalculateCatalogArea():
+	return quad(cosFunction, np.radians(variables['minDec']), np.radians(variables['maxDec']))[0]
 
 ###############################################################################################################
 ###     BEGINNING OF SCRIPT     ###############################################################################
@@ -210,6 +224,29 @@ if not os.path.isdir(outfolder):
 
 variables = ReadVariables()
 
+#####################################################################
+# The following code block allows me to draw random number from a cos
+#  distribution.  That way, high dec regions to not get overcrowded
+#  due to the Cos(dec) shringking of the regions near the poles.
+#####################################################################
+
+# This function is integrated with the dec bounds to get the normalization constant.
+def UnnormalizedPDF(x):
+	return np.cos(x)
+
+limLower = math.radians(variables['minDec'])
+limUpper = math.radians(variables['maxDec'])
+norm = quad(UnnormalizedPDF, limLower, limUpper)[0]
+
+# Draw random values from a bounded cosine distribution.
+class CosDistribution(rv_continuous):
+	def _pdf(self, x):
+		return np.cos(x) / norm
+
+#####################################################################
+# End of cos distribution code block.
+#####################################################################
+
 catalogFilename = '../Runs/%s/SimulatedCatalog.cat' % runName
 
 logfile = open('../Runs/%s/log-CreateCatalog.txt' % (runName), 'w')
@@ -223,13 +260,24 @@ if not os.path.isfile('../Runs/%s/Variables.cfg' % runName):
 msg = 'Setting up Variables'
 PrintAndLog(msg, logfile)
 
+cosDist = CosDistribution(a = limLower, b = limUpper)
+
 lowerTrunc = (-1.0 * variables['shape_cutoff'] - variables['shape_mean']) / variables['ellipticity_dispersion']
 upperTrunc = (variables['shape_cutoff'] - variables['shape_mean']) / variables['ellipticity_dispersion']
 
 # Since COSMOS data was acquired with HST, I need to convert the counts so that they make sense for CFIS data.
 fluxScaling = (variables['telescope_diameter']**2 / 2.4**2 * (1.-0.33**2))
 
-imageAreaDegrees = (variables['maxRA'] - variables['minRA']) * (variables['maxDec'] - variables['minDec'])
+imageAreaDegrees = CalculateCatalogArea() * (180.0 / np.pi) * (180.0 / np.pi) #(variables['maxRA'] - variables['minRA']) * (variables['maxDec'] - variables['minDec'])
+
+# quad(NumGalaxiesPerSquareDegree, 0, variables['mag_max'])[0]
+#imageWidth = (math.radians(variables['maxRA']) - math.radians(variables['minRA']))
+#imageArea = quad(AreaAdjustment, math.radians(variables['minDec']), math.radians(variables['maxDec']), args=(imageWidth))[0]
+#PrintAndLog('Adjusted catalog area (sq rad): %f' % imageArea, logfile)
+#imageAreaDegrees = imageArea * (180.0 / np.pi) * (180.0 / np.pi)
+
+#PrintAndLog('Adjusted catalog area (sq deg): %f' % imageAreaDegrees, logfile)
+
 catWidth = (variables['maxRA'] - variables['minRA'])
 catHeight = (variables['maxDec'] - variables['minDec'])
 

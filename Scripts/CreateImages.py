@@ -72,7 +72,12 @@ def AddGalaxyToImage(ra, minRA, dec, minDec, mag, hlr, sInd, e1, e2, galCount, p
 
 	# Calculate the location of the galaxy in pixel space.
 	worldPosition = galsim.CelestialCoord(ra=ra * galsim.degrees, dec=dec * galsim.degrees)
-	imagePosition = wcs.toImage(worldPosition)
+	
+	try:
+		imagePosition = wcs.toImage(worldPosition)
+	except:
+		PrintAndLog("RA: %f, Dec %f" % (ra, dec), logfile)
+		return
 
 	#if imagePosition.x < 0.0 or imagePosition.x > variables['image_size_x'] or imagePosition.y < 0.0 or imagePosition.y > variables['image_size_y']:
 	#	return None
@@ -88,6 +93,7 @@ def AddGalaxyToImage(ra, minRA, dec, minDec, mag, hlr, sInd, e1, e2, galCount, p
 		galaxy = galsim.Moffat(beta = 3, fwhm = imageSeeing)
         else:
                 galaxy = galsim.Sersic(n = sInd, half_light_radius = hlr)
+		#galaxy = wcs.toImage(galaxy, image_pos = imagePosition)
 
         # Calculate the number of counts by using the zero point.  m = -2.5*log_10(counts) + zero_point
         # Zero point is in e- per sec; multiply by gain to convert to ADU per sec.
@@ -134,6 +140,7 @@ def AddGalaxyToImage(ra, minRA, dec, minDec, mag, hlr, sInd, e1, e2, galCount, p
 	                fullImages[i][bounds] += stamp[bounds]
 		except:
 			# If the galaxy stamp is too far outside the frame, this will fail.  Just return None.
+			PrintAndLog('Galaxy too far out of frame.  Not adding.', logfile)
 			return None
 
                 if i == 0:
@@ -155,7 +162,7 @@ def AddGalaxyToImage(ra, minRA, dec, minDec, mag, hlr, sInd, e1, e2, galCount, p
 	                                bcoImage[bounds] += stamp[bounds]
 			
                         # Write the galaxy to the output catalog.  Since multiple images zill have the same set of catalogs, only write out once.
-                        truthFile.write('%i %f %f %f %f %f %f %f %s\n' % (galCount, imagePosition.x, imagePosition.y, mag, hlr, sInd, e1, e2, note))
+                        truthFile.write('%i %f %f %f %f %f %f %f %s %f %f\n' % (galCount, imagePosition.x, imagePosition.y, mag, hlr, sInd, e1, e2, note, ra, dec))
 
 # Get the core # and number of images per core from the command line arguments.
 runName = sys.argv[1]
@@ -170,7 +177,7 @@ imageSeeing = float(sys.argv[9])
 skyNoiseLevel = float(sys.argv[10])
 
 # We don't want to just draw galaxies that are 'centered' in the frame.  We also want galaxies that are centered outside the frame, but which overlap with the borders of the frame and bleed into the image.  This setting dictates how far outisde of the frame (in degrees) a galaxy can be and still be added to the image.
-OVERLAP_CHECK_DEG = 0.003
+OVERLAP_CHECK_DEG = 0.0015
 
 # Specify an output folder for all of the generated images.
 coreName = coreNum
@@ -236,10 +243,11 @@ gsHeader['crval1'] = ra
 gsHeader['crval2'] = dec
 gsHeader['ra_deg'] = ra
 gsHeader['dec_deg'] = dec
-gsHeader['datasec'] = '[%i:%i,1:%i]' % (variables['calibration_columns'] + 1, variables['image_size_x'], variables['image_size_y'])
+gsHeader['datasec'] = '[%i:%i,1:%i]' % (variables['calibration_columns'] + 1, variables['image_size_x'] - variables['calibration_columns'], variables['image_size_y'] - variables['calibration_columns'])
 gsHeader['fscale'] = variables['fscale']
 
 wcs = galsim.wcs.readFromFitsHeader(gsHeader)[0]
+PrintAndLog("WCS is a %s" % wcs.__class__.__name__, logfile)
 
 #  Want to find RA, Dec limits of the image.  Get the RA/Decs of each corner and find the min and max.
 pos1 = wcs.toWorld(galsim.PositionD(1.0, 1.0))
@@ -249,14 +257,27 @@ pos4 = wcs.toWorld(galsim.PositionD(variables['image_size_x'], 1.0))
 
 # Convert the radians to degrees.
 ra1, dec1 = PositionRadiansToDegrees(pos1)
+#ra1 = ra1 * math.cos(math.radians(dec1))
 ra2, dec2 = PositionRadiansToDegrees(pos2)
+#ra2 = ra2 * math.cos(math.radians(dec2))
 ra3, dec3 = PositionRadiansToDegrees(pos3)
+#ra3 = ra3 * math.cos(math.radians(dec3))
 ra4, dec4 = PositionRadiansToDegrees(pos4)
+#ra4 = ra4 * math.cos(math.radians(dec4))
+
+PrintAndLog('RA1, Dec1: (%f, %f)' % (ra1, dec1), logfile)
+PrintAndLog('RA2, Dec2: (%f, %f)' % (ra2, dec2), logfile)
+PrintAndLog('RA3, Dec3: (%f, %f)' % (ra3, dec3), logfile)
+PrintAndLog('RA4, Dec4: (%f, %f)' % (ra4, dec4), logfile)
 
 minRA = min(ra1, ra2, ra3, ra4)
 minDec = min(dec1, dec2, dec3, dec4)
 maxRA = max(ra1, ra2, ra3, ra4)
 maxDec = max(dec1, dec2, dec3, dec4)
+
+#centerDec = ((maxDec - minDec) / 2.0) + minDec
+#minRA = minRA * math.cos(math.radians(centerDec))
+#maxRA = maxRA * math.cos(math.radians(centerDec))
 
 # Because some CCDS are rotated by the WCS, make sure the min is actually the min.
 if maxRA < minRA:
@@ -314,17 +335,20 @@ psfHLR = imageSeeing
 psf = galsim.Moffat(beta = 3, fwhm = psfHLR)
 numStars = 0
 
+numLinesRead = 0
 # Read in parameters from input catalog.
 with open(catalogFilename) as catalog:
 	for line in catalog:
+		numLinesRead += 1
+
 		# Skip the first line.
 		if '#' in line:
 			continue 
 
 		# Create and add the galaxies to the image.
 		params = line.split()
-		ra = float(params[1])
 		dec = float(params[2])
+		ra = float(params[1])# * math.cos(math.radians(dec))
 
 		# Check to see if this object is within the bounds of the observation.
 		if (ra >= minRA - OVERLAP_CHECK_DEG  and ra <= maxRA + OVERLAP_CHECK_DEG and dec >= minDec - OVERLAP_CHECK_DEG and dec <= maxDec + OVERLAP_CHECK_DEG):
@@ -346,6 +370,7 @@ with open(catalogFilename) as catalog:
 			AddGalaxyToImage(ra, minRA, dec, minDec, mag, hlr, sInd, e1, e2, galCount, psf, fullImages, psfImage, truthFile, note, bcoImage, wcs)
 			galCount += 1
 
+PrintAndLog('Number of lines in the complete catalog read: %i' % numLinesRead, logfile)
 truthFile.close()
 
 print('%i stars in this image.' % numStars)
@@ -358,19 +383,24 @@ for i in range(numCopiesOfImage):
         # These images should all have identical noise, so add the noiseImage (which is a single realization of the noise model) to each of these.
         fullImages[i] += noiseImage
         fullImages[i] += int(variables['cfis_background'])
-        fullImages[i].wcs = wcs
-        fullImages[i].header = gsHeader
 	#fullImages[i].write('../Runs/%s/FullImage-%i-%i-%iTEST.fits' % (runName, coreNum, imageNum, i))
 
-	# Add the blank calibration columns to the image.
+	# Add the blank calibration rows and columns to the image.
 	calColumns = galsim.ImageF(variables['calibration_columns'], variables['image_size_y'])
+	calColumns.setOrigin(fullImages[i].origin)
 	calColumns.setZero()
-	calColumns.setOrigin((0, 0))
 	bounds = calColumns.bounds & fullImages[i].bounds
-        #calColumns[bounds] += fullImages[i][bounds]
-	#fullImages[i].setSubImage(bounds, calColumns)
-	fullImages[i][bounds] = calColumns[bounds]
+        fullImages[i][bounds] = calColumns[bounds]
 
+
+	calRows = galsim.ImageF(variables['image_size_x'], variables['calibration_columns'])
+	calRows.setOrigin((1.0, variables['image_size_y'] - variables['calibration_columns'] + 1.0))
+	calRows.setZero()
+	bounds = calRows.bounds & fullImages[i].bounds
+        fullImages[i][bounds] = calRows[bounds]
+
+        fullImages[i].header = gsHeader
+	fullImages[i].wcs = wcs
 	fullImages[i].write('../Runs/%s/FullImage-%i-%i-%i-%i.fits' % (runName, coreNum, imageNum, i, ccdNum))
 
 	if variables['write_noiseless_file'] == 1:
