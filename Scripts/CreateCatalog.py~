@@ -95,72 +95,72 @@ def Log(msg, logfile):
 def ReadModelCatalog(filename):
 	mags = []
 	models = []
-	gemsfile = open(filename, 'r')
+        gemsfile = open(filename, 'r')
 
-	# Skip past the description lines.
-	gemsfile.readline()
-	line = gemsfile.readline()    
+        # Skip past the description lines.
+        gemsfile.readline()
+        line = gemsfile.readline()    
         
-	# Keep track of the relevant parameters for all COSMOS galaxies with a reduced Chi^2 of less than 'minChi2'.
-	while line:
-		data = line.split(',')
+        # Keep track of the relevant parameters for all COSMOS galaxies with a reduced Chi^2 of less than 'minChi2'.
+        while line:
+                data = line.split(',')
 
-		# Uncomment these lines if using COSMOS catalog.	
-		#chi2 = float(data[59])
-		#cla = int(float(data[21]))
+                # Uncomment these lines if using COSMOS catalog.	
+                #chi2 = float(data[59])
+                #cla = int(float(data[21]))
 
-		#if (chi2 < variables['min_chi2'] and cla == variables['galaxy_class']):
-		#	hlr = float(data[33]) * variables['catalog_pixel_scale']# * 0.5
-		#	sInd = float(data[55])
-		#	ell = float(data[43])
-		#	typ = int(float(data[64]))
-		#	bul = int(float(data[65]))
-		#	mag = float(data[6])
+                #if (chi2 < variables['min_chi2'] and cla == variables['galaxy_class']):
+                #	hlr = float(data[33]) * variables['catalog_pixel_scale']# * 0.5
+                #	sInd = float(data[55])
+                #	ell = float(data[43])
+                #	typ = int(float(data[64]))
+                #	bul = int(float(data[65]))
+                #	mag = float(data[6])
 
-		#	if hlr > 0.0 and sInd >= 0.3 and sInd <= 6.0:
-		#		mags.append(mag)
-		#		models.append(Galaxy(hlr, sInd, ell, typ, bul, mag))
-		sInd = 0.0
-		hlr = 0.0
-		axisRatio = 0.0
+                #	if hlr > 0.0 and sInd >= 0.3 and sInd <= 6.0:
+                #		mags.append(mag)
+                #		models.append(Galaxy(hlr, sInd, ell, typ, bul, mag))
+                sInd = 0.0
+                hlr = 0.0
+                axisRatio = 0.0
 
-		try:
-			sInd = float(data[11])
-			hlr = float(data[9])
-			axisRatio = float(data[13])
-		except:
-			line = gemsfile.readline()
-			continue
+                try:
+                        sInd = float(data[11])
+                        hlr = float(data[9])
+                        axisRatio = float(data[13])
+                except:
+                        line = gemsfile.readline()
+                        continue
 
-		if data[3] == 'COSMOS':
-			hlr = hlr * variables['cosmos_pixel_scale'] # COSMOS pixel scale
-		else:
-			hlr = hlr * variables['aegis_pixel_scale'] # AEGIS pixel scale
+                if data[3] == 'COSMOS':
+                        hlr = hlr * variables['cosmos_pixel_scale'] # COSMOS pixel scale
+                else:
+                        hlr = hlr * variables['aegis_pixel_scale'] # AEGIS pixel scale
 
-		hlr = hlr
+                hlr = hlr
 	
-		sMag = data[4]
-		mag = 0.0
+                sMag = data[4]
+                mag = 0.0
 
-		if sMag.strip() != '':
-			mag = float(sMag)
-		else:
-			sMag = -1.0
+                if sMag.strip() != '':
+                        mag = float(sMag)
+                else:
+                        sMag = -1.0
 
-		starProb = float(data[7])
-		objClass = data[5]
+                starProb = float(data[7])
+                objClass = data[5]
 
 		# Filter out stars and other anomolous items.  GalSim can only handle Sersic indices between 0.3 and 6.2 inclusive (galsim-developers.github.io/GalSim/classgalsim_1_1base_1_1_sersic.html)
-		if mag > 0.0 and hlr > 0.0 and hlr < 3.0 and sInd >= 0.3 and sInd <= 6.2 and starProb < 0.2 and objClass.find('Star') == -1 and objClass.find('QSO') == -1:
-			mags.append(mag)
-			models.append(Galaxy(hlr, sInd, 0.0, 0, 0, mag, axisRatio))			
+                if mag > 0.0 and hlr > 0.0 and hlr < 3.0 and sInd >= 0.3 and sInd <= 6.2 and starProb < 0.2 and objClass.find('Star') == -1 and objClass.find('QSO') == -1:
+                        mags.append(mag)
+                        models.append(Galaxy(hlr, sInd, 0.0, 0, 0, mag, axisRatio))			
 
-		line = gemsfile.readline()
+                line = gemsfile.readline()
 
-	return (mags, models)
+        return (mags, models)
 
 
-def AddGalaxyToCatalog(mag, hlr, sersicIndex, e1, e2, galCount, numRotations, catalogFiles, catWidth, catHeight):
+def AddGalaxyToCatalog(mag, hlr, sersicIndex, e1, e2, galCount, numRotations, catalogFile, catWidth, catHeight):
 	currentGalaxyRotation = 0
 
 	# Pick an initial angle for this galaxy.
@@ -171,37 +171,37 @@ def AddGalaxyToCatalog(mag, hlr, sersicIndex, e1, e2, galCount, numRotations, ca
 
 	# Add the correct number of rotations for this galaxy.
 	# Generate new positions and orientations for this galaxy.
-	#for j in range(numRotations):
-	posX = random.uniform(0, catWidth) + variables['minRA']
-	posY = math.degrees(cosDist.rvs(size=1)[0])
-        #posY = random.uniform(0, catHeight) + variables['minDec']
-	# The declination should be drawn from a cosine distribution so that the regions
-	#  closer to the poles don't get overcrowded.
+	for j in range(numRotations):
+		posX = random.uniform(0, catWidth) + variables['minRA']
+		posY = math.degrees(cosDist.rvs(size=1)[0])
+                #posY = random.uniform(0, catHeight) + variables['minDec']
+		# The declination should be drawn from a cosine distribution so that the regions
+		#  closer to the poles don't get overcrowded.
 
-	# Rotate the e1, e2 values.
-	#cos2Phi = np.cos(2.0 * angleToRotate * j)
-	#sin2Phi = np.sin(2.0 * angleToRotate * j)
-	#rotation = np.matrix('%f %f;%f %f' % (-1.0 * cos2Phi, -1.0 * sin2Phi, sin2Phi, -1.0 * cos2Phi))
-	#newShape = shape.dot(rotation)
+		# Rotate the e1, e2 values.
+		cos2Phi = np.cos(2.0 * angleToRotate * j)
+		sin2Phi = np.sin(2.0 * angleToRotate * j)
+		rotation = np.matrix('%f %f;%f %f' % (-1.0 * cos2Phi, -1.0 * sin2Phi, sin2Phi, -1.0 * cos2Phi))
+		newShape = shape.dot(rotation)
 		
-	#newE1 = newShape.item(0)
-	#newE2 = newShape.item(1)
+		newE1 = newShape.item(0)
+		newE2 = newShape.item(1)
 
-	# 'Gal#, X, Y, r-Mag, HLR,  Sersic Index, e1 (intrinsic), e2 (intrinsic) \n'
-	catalogFiles.write('%i %f %f %f %f %f %f %f \n' % (galCount + currentGalaxyRotation, posX, posY, mag, hlr, sersicIndex, e1, e2))
+		# 'Gal#, X, Y, r-Mag, HLR,  Sersic Index, e1 (intrinsic), e2 (intrinsic) \n'
+		catalogFile.write('%i %f %f %f %f %f %f %f \n' % (galCount + currentGalaxyRotation, posX, posY, mag, hlr, sersicIndex, newE1, newE2))
 
-	#angle += angleToRotate
-	#currentGalaxyRotation += 1
+		#angle += angleToRotate
+		currentGalaxyRotation += 1
 
 def AddStarToCatalog(starNum, mag, e1, e2, catalogFile, catWidth, catHeight):
 	# TODO: If we want to implement picking seeing from a Gaussian distribution, this line will need to be updated.
 	imageSeeing = variables['seeing']
 
-	posX = random.uniform(0, catWidth) + variables['minRA']
-	posY = math.degrees(cosDist.rvs(size=1)[0])
+        posX = random.uniform(0, catWidth) + variables['minRA']
+        posY = math.degrees(cosDist.rvs(size=1)[0])
 	#posY = random.uniform(0, catHeight) + variables['minDec']
 
-	catalogFile.write('%i %f %f %f %f %f %f %f\n' % (starNum, posX, posY, mag, imageSeeing, -1, e1, e2))
+        catalogFile.write('%i %f %f %f %f %f %f %f\n' % (starNum, posX, posY, mag, imageSeeing, -1, e1, e2))
 
 def cosFunction(dec):
 	return (np.radians(variables['maxRA']) - np.radians(variables['minRA'])) * np.cos(dec)
@@ -341,11 +341,11 @@ for i in range(len(modelMagLists)):
 	numGalaxies = numGalaxies + leftovers
 
 	# If we want multiple rotations of the same galaxy, reduce the number of models to draw.
-	numUniqueGalaxies = int(numGalaxies) #/ variables['num_rotations']) 
+	numUniqueGalaxies = int(numGalaxies / variables['num_rotations']) 
 	print('Number of unique galaxy models to use: %i' % numUniqueGalaxies)
 
 	# If there were 5 galaxies to add, but we have 4 rotations, then 1 galaxy is not added.  Add it to the next bin.  This is really only important for low magnitude galaxies where the counts are low.
-	leftovers = 0#numGalaxies % int(variables['num_rotations'])
+	leftovers = numGalaxies % int(variables['num_rotations'])
 
 	# Draw properties for the galaxies and add them to the catalog.
 	for galNum in range(numUniqueGalaxies):
@@ -364,7 +364,7 @@ for i in range(len(modelMagLists)):
 		hlr = model.halfLightRadius * math.sqrt(axisRatio)
 
 		AddGalaxyToCatalog(model.magnitude, hlr, model.sersicIndex, e1, e2, galCount, numRotations, catalogFile, catWidth, catHeight)
-		galCount += 1#numRotations
+		galCount += numRotations
 
 # Now add the stars.
 
@@ -384,19 +384,19 @@ for mag in partitionMags:
 	if mag > variables['mag_max']:
 		break
             
-	numStars = NumStarsPerSquareDegree(mag) * imageAreaDegrees * starDensityBoostFactor * variables['mag_step']
-	remainder = numStars % 1.0
-	leftovers = leftovers + remainder
-	numStars = int(numStars + leftovers)
+        numStars = NumStarsPerSquareDegree(mag) * imageAreaDegrees * starDensityBoostFactor * variables['mag_step']
+        remainder = numStars % 1.0
+        leftovers = leftovers + remainder
+        numStars = int(numStars + leftovers)
 
-	if leftovers > 1.0:
-		leftovers = leftovers % 1.0
+        if leftovers > 1.0:
+                leftovers = leftovers % 1.0
 
-	msg = 'Creating %i stars with magnitude %f.' % (numStars, mag)
-	Log(msg, logfile)
+        msg = 'Creating %i stars with magnitude %f.' % (numStars, mag)
+        Log(msg, logfile)
 
-	for starNum in range(numStars):
-		AddStarToCatalog(starCount, mag, 0.0, 0.0, catalogFile, catWidth, catHeight)
+        for starNum in range(numStars):
+                AddStarToCatalog(starCount, mag, 0.0, 0.0, catalogFile, catWidth, catHeight)
 		starCount += 1
 
 catalogFile.close()

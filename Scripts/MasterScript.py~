@@ -1,10 +1,8 @@
 from astropy import units as u
 from astropy.coordinates import SkyCoord
-from astropy.io import fits
 import datetime
-import glob
 import os
-#import pyfits
+import pyfits
 import random
 import scipy.stats as stats
 import string
@@ -30,15 +28,8 @@ def GetRADecRange(centerRA, centerDec):
 
 # This function will generate a new catalog of objects to simulate.  It does not generate any actual images, just the object catalog.
 def GenerateCatalog(runName):
-    print('GENERATING MOCK CATALOG')
-    start = time.time()
-    p1 = subprocess.Popen('python3 ./CreateCatalog.py %s' % runName, shell=True)
+    p1 = subprocess.Popen('python ./CreateCatalog.py %s' % runName, shell=True)
     p1.wait()
-    end = time.time()
-    
-    outfile = open('./CatalogGenerationTime.txt', 'w')
-    outfile.write('Catalog took %f seconds.' % (end - start))
-    outfile.close()
 
 # This function will run in its own thread.
 #  It will create a set of simulated images and measure the shapes.
@@ -53,8 +44,6 @@ def CreateImages(runName, coreNum, numImagesPerCore, catalogName, ra, dec, heade
     skyNoiseLevelGauss = stats.truncnorm(skyNoiseLevelMean - skyNoiseLevelDispersion, skyNoiseLevelMean + skyNoiseLevelDispersion, loc = skyNoiseLevelMean, scale = skyNoiseLevelDispersion).rvs(1)[0]
     skyNoiseLevel = float(skyNoiseLevelGauss * variables['gain'] * variables['exposure_time'])
 
-    start = time.time()
-
     for ccdNum in range(int(variables['numCCDs'])):
         #ccdXOffsetDeg = float(ccd[0]) * float(variables['pixel_scale']) / 3600.0
         #ccdYOffsetDeg = float(ccd[1]) * float(variables['pixel_scale']) / 3600.0
@@ -63,8 +52,8 @@ def CreateImages(runName, coreNum, numImagesPerCore, catalogName, ra, dec, heade
 	#crpix2 = ccd[1]
 
         # Run the script that creates the images and wait for it to finish.
-        print('python3.6 ./CreateImages.py %s %i %i %s %f %f %i %s %f %f' % (runName, coreNum, numImagesPerCore, catalogName, ra, dec, ccdNum, headerFile, imageSeeing, skyNoiseLevel))
-        p1 = subprocess.Popen('python3.6 ./CreateImages.py %s %i %i %s %f %f %i %s %f %f' % (runName, coreNum, numImagesPerCore, catalogName, ra, dec, ccdNum, headerFile, imageSeeing, skyNoiseLevel), shell=True)
+        print('python3.5 ./CreateImages.py %s %i %i %s %f %f %i %s %f %f' % (runName, coreNum, numImagesPerCore, catalogName, ra, dec, ccdNum, headerFile, imageSeeing, skyNoiseLevel))
+        p1 = subprocess.Popen('python ./CreateImages.py %s %i %i %s %f %f %i %s %f %f' % (runName, coreNum, numImagesPerCore, catalogName, ra, dec, ccdNum, headerFile, imageSeeing, skyNoiseLevel), shell=True)
         p1.wait()
 
         if int(variables['createSextractorCatalog']) == 1:
@@ -74,31 +63,25 @@ def CreateImages(runName, coreNum, numImagesPerCore, catalogName, ra, dec, heade
                 CompareCatalogs(runName, coreNum, numImagesPerCore, ccdNum)
                 CompareWithCFIS(runName, coreNum, numImagesPerCore, ccdNum)
 
-    end = time.time()
-
-    outfile = open('./ImageGenerationTime.txt', 'w')
-    outfile.write('Image generation took %f seconds.' % (end - start))
-    outfile.close()
-
 # Run Sextractor to create a catalog of detected objects.
 def CreateCatalog(runName, coreNum, imageNum, ccdNum):
     print('Running Sextractor on the simulated image.')
-    p1 = subprocess.Popen('python3 ./CreateSextractorCatalogs.py %s %i %i %i' % (runName, coreNum, imageNum, ccdNum), shell=True)
+    p1 = subprocess.Popen('python ./CreateSextractorCatalogs.py %s %i %i %i' % (runName, coreNum, imageNum, ccdNum), shell=True)
     p1.wait()
 
 # Compare the Sextractor catalog to the known catalog.
 def CompareCatalogs(runName, coreNum, imageNum, ccdNum):
     print('Comparing catalogs.')
-    p1 = subprocess.Popen('python3 ./MatchCatalogs.py %s %i %i %i' % (runName, coreNum, imageNum, ccdNum), shell=True)
+    p1 = subprocess.Popen('python ./MatchCatalogs.py %s %i %i %i' % (runName, coreNum, imageNum, ccdNum), shell=True)
     p1.wait()
     
 # Compare the output of the Sextractor catalog, with the Sextractor catalog of a real CFIS image.
 def CompareWithCFIS(runName, coreNum, imageNum, ccdNum):
-        p1 = subprocess.Popen('python3 ./CompareWithCFIS.py %s %i %i %i' % (runName, coreNum, imageNum, ccdNum), shell=True)
+        p1 = subprocess.Popen('python ./CompareWithCFIS.py %s %i %i %i' % (runName, coreNum, imageNum, ccdNum), shell=True)
         p1.wait()
         
 def BulkCompareWithCFIS(runName, coreNum, imageNum):
-        p1 = subprocess.Popen('python3 ./BulkCompareWithCFIS.py %s %i %i' % (runName, coreNum, imageNum), shell=True)
+        p1 = subprocess.Popen('python ./BulkCompareWithCFIS.py %s %i %i' % (runName, coreNum, imageNum), shell=True)
         p1.wait()
 
 # Reads a file containing a list of the RA and Decs of multiple observations.  Returns a list of the [RA, Dec] pairs.
@@ -110,31 +93,16 @@ def GetObservations(obsFilename, raIndex, decIndex):
 			# Skip the first line.
 			if '#' in line:
 				continue 
-
+	
 			data = line.split()
 			headerFile = data[int(variables['headerIndex'])]
-
-			ra = -1.0
-			dec = -1.0
-
-			if raIndex > -1 and decIndex > -1:
-				c = SkyCoord(data[raIndex] + ' ' + data[decIndex], unit=(u.hourangle, u.deg))
-				ra = c.ra.degree
-				dec = c.dec.degree
+			c = SkyCoord(data[raIndex] + ' ' + data[decIndex], unit=(u.hourangle, u.deg))
+			ra = c.ra.degree
+			dec = c.dec.degree
 
 			observations.append([ra, dec, headerFile])
 
-	return observations
-
-def GetObservationsFromHeaders(headerFolder):
-	observations = []
-
-	headerFiles = glob.glob(headerFolder + '*.head')
-
-	for headerFile in headerFiles:
-		observations.append([-1.0, -1.0, headerFile.split('/')[-1]])
-
-	return observations
+	return observations	
 
 # The user is supplying a list of RAs and Decs in the config file.  Parse them.
 def GetRADecsFromVariables():
@@ -156,7 +124,7 @@ def ReadCCDLayout(ccdLayoutFilename):
 	#		pixelOffsetX = int(data[0])
 	#		pixelOffsetY = int(data[1])
 	#		ccds.append([pixelOffsetX, pixelOffsetY])
-	hdulist = fits.open(ccdLayoutFilename)
+	hdulist = pyfits.open(ccdLayoutFilename)
 	i = 1
 	while i <= variables['numCCDs']:
 		crpix1 = float(hdulist[i].header['CRPIX1'])
@@ -179,11 +147,8 @@ observations = []
 if variables['useObservingList'] == 0:
 	numImages = variables['numImages']
 	observations = GetRADecsFromVariables()
-elif variables['useObservingList'] == 1:
-	observations = GetObservations(variables['observationsList'], int(variables['raIndex']), int(variables['decIndex']))
-	numImages = len(observations)
 else:
-	observations = GetObservationsFromHeaders(variables['headerPath'])
+	observations = GetObservations(variables['observationsList'], int(variables['raIndex']), int(variables['decIndex']))
 	numImages = len(observations)
 
 #ccds = [[0, 0]]
@@ -218,26 +183,9 @@ else:
 threads = []
 currentObservation = 0
 
-#for imageNum in range(numImagesPerCore):
-print('There are %i observations.' % len(observations))
-imageNum = 0
-
-#j = 0
-#for i in range(len(observations)):
-#	if '2367626' in observations[i][2]:
-#		print(observations[i][2])
-#		j = j + 1
-#
-#print(j)
-while currentObservation < len(observations):
+for imageNum in range(numImagesPerCore):
     # Start all of the threads.
-    for coreNum in range(numCores): 
-        print('MasterScript Version')
-        print(sys.version)   
-
-        if currentObservation >= len(observations):
-            continue
-
+    for coreNum in range(numCores):    
         ra, dec, headerFile = observations[currentObservation]
         thr = threading.Thread(target=CreateImages, args=(runName, coreNum, imageNum, catalogName, ra, dec, headerFile))
         threads.append(thr)
@@ -247,8 +195,6 @@ while currentObservation < len(observations):
     # Wait for all of the threads to complete.
     for thr in threads:
         thr.join()
-
-    imageNum += 1
 
 if int(variables['compareWithMultipleCFISExposures']) == 1:
     BulkCompareWithCFIS(runName, coreNum, numImagesPerCore)

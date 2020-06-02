@@ -1,28 +1,22 @@
 # Number of cores to utilize.  A given image is always generated on a single core, so numImages must be greater than numCores.
 numCores = 8
 
-outdir = /media/isaac/1a22ba1a-ecba-4aae-82f9-12403161ad6b/ispitzer/Science/Lensing/CFIS/CFISSimulations/Runs/ #/media/isaac/1a22ba1a-ecba-4aae-82f9-12403161ad6b/ispitzer/Simulations/
-imagedir = <DATE_TIME>/Images/<OBS_NAME>_Shear_<SHEAR_NUM>_Rotation_<ROTATION_NUM>/r.MP9602/single_V1.1.0A/
-
 # Do we want to generate a new simulated catalog.  If not, you'll want to supply an existing catalog to generate the observations from.
-generateCatalog = 1
+generateCatalog = 0
 
 # If generateCatalog == 0, set this parameter to specify the catalog to use.
-existingCatalog = ../Runs/2020-05-23-12:22/SimulatedCatalog.cat
+existingCatalog = ../Runs/2020-01-03-12:13/SimulatedCatalog.cat
 
 # If generating a new catalog, define the catalog width (RA, degrees) and height (Dec, degrees)
-minRA = 144.0
-maxRA = 152.0
-minDec = 37.0
-maxDec = 44.0
+minRA = 146.0
+maxRA = 150.0 #209.6 #213.0
+minDec = 38.0 #53.7 #52.0
+maxDec = 43.0 #55.3 #58.0
 
-# Provide a list of observations.  These should contain RA and Dec values for the observations somewhere in them.  If 2, headerPath should point to a list of external header files for every exposure.
-useObservingList = 2 #1
-observationName = CFIS_147.9_40.5
+# Provide a list of observations.  These should contain RA and Dec values for the observations somewhere in them.
+useObservingList = 1 #1
 observationsList = ./ObservingList/CFISObservations.log #MCLOG-CFIS.r.qso-elx.log
-dataPath = ../../Data/Ludo/CFIS_147.9_40.5/single_V1.1.0A/ #/data/pipeline/new_pipeline/simulation/CFISSimulations/input_data/
-# If headers are stored separately from the data, provide the path to the headers here, otherwise delete this field.
-headerPath = ../../Data/Ludo/CFIS_147.9_40.5/headers_V1.1.0A/
+dataPath = ../../Data/Ludo/single_V1.1.0A/ #/data/pipeline/new_pipeline/simulation/CFISSimulations/input_data/
 
 # The script will copy WCS info from the header of this fits file into the simulated image.  If useObservationList is set to 1, wcs information will be pulled from the images there and this parameter is ignored.
 wcs_image = ../../Data/1832411p.fits.fz #../../Calibration/Scripts/WCSImages/2074309p.fits
@@ -69,15 +63,12 @@ compareWithMultipleCFISExposures = 0
 CFISComparisonCatalog = ../../Data/2074309pCat.txt,../../Data/1796233pCat.txt,../../Data/1805560pCat.txt,../../Data/1815549pCat.txt#,../../Data/1851595pCat.txt,../../Data/1943815pCat.txt,../../Data/2074310pCat.txt,../../Data/2074311pCat.txt,../../Data/2074312pCat.txt,../../Data/2104152pCat.txt,../../Data/2163900pCat.txt,../../Data/2163901pCat.txt,../../Data/2163903pCat.txt,../../Data/2165339pCat.txt
 
 # If you want multiple copies of the same image with varying shears, change this value to the desired # of copies/shear value combinations.
-numCopiesOfImage = 1 #8 #1 #5
+numCopiesOfImage = 1 #5
 
 # The shear to apply to all objects in this simulation.  If you want to fix the shear to a specific value set min and max to the same value.  Otherwise, shear values will be pulled randomly (uniform distribution) between the min and the max.
 # If numCopiesOfImage is greater than 1, multiple sets of shear values will be drawn.
-e1s = 0.0#, 0.0283, 0.04, 0.0283, 0.0, -0.0283, -0.04, -0.0283
-e2s = 0.04#, 0.0283, 0.0, -0.0283, -0.04, -0.0283, 0.0, 0.0283
-
-# If uniqueNoise is set to greater than 0, each rotation/shear combination will have different noise.  If set to 0, the noise will be the same in each.
-uniqueNoise = 0
+e1s = 0.0 #0.02 #0.0, -0.02, 0.02, 0.0, 0.0
+e2s = 0.0 #0.01 #0.0, 0.0, 0.0, -0.02, 0.02
 
 # Where to cutoff the Gaussian distribution for galaxy shape selection.
 shape_cutoff = 1.0
@@ -92,9 +83,6 @@ ellipticity_dispersion = 0.25
 # Dimensions of the exposures to create (pixels)
 image_size_x = 2112 #2080
 image_size_y = 4644
-
-# Number of columns used for calibration.  These will be overwritten with zeroes.
-calibration_columns = 32
 
 # CFIS pixel scale.  Website says 0.187, CFIS headers say 0.185.
 pixel_scale = 0.187 #0.186
@@ -121,7 +109,7 @@ maximum_fft_size = 21858
 star_density_target = -1
 
 # This parameter can be used to adjust the density of galaxies in the image.  Set to the desired number of galaxies per square arcminute.  If negative, the default density is used (as defined by the function specified in Fenech Conti et al. 2017).
-gal_density_target = 75.0 #65.0 #55.0 #45.0 #25.0 #16.0#-1
+gal_density_target = -1#10.0#12.0#13.0#15.5#22.0#-1.0 #15.5
 
 # Number of rotations to use for each galaxy model to reduce shape noise.  Typically set to 4.
 # num_rotations * rotation_angle should equal 180
@@ -140,18 +128,21 @@ fscale = 20.137 #0.049659 #20.137
 mag_step = 0.1
 
 # Maximum magnitude to create galaxies to.  This should be large enough that we're generating galaxies beyond the detection threshhold.
-mag_max = 26.0
+mag_max = 25.0#26.0
 
 # Exposure time to simulate (seconds).
 exposure_time = 300.0
 
+# Number of columns used for calibration.  These will be overwritten with zeroes.
+calibration_columns = 32
+
 # Seeing for the image.  Actual seeing for an exposure is drawn from a Gaussian centered on the seeing value with a sigma equal to seeing_dispersion.
 # 0.6 is average
-seeing = 0.6
-seeing_dispersion = 0.001
+seeing = 0.65
+seeing_dispersion = 0.1
 
 # Used to set noise level.  The value of sky_brightness (0, 1, 2, etc) determines which of the sky_# values below to use.  Higher numbers = more noise.  The actual noise level is drawn from a Gaussian centered on sky_# with a sigma equal to sky_dispersion.  
-sky_brightness = 8 #2 #1
+sky_brightness = 2 #1
 sky_0 = 1.65
 sky_1 = 4.17
 sky_2 = 6.26
@@ -160,8 +151,7 @@ sky_4 = 3.5
 sky_5 = 2.0
 sky_6 = 1.4
 sky_7 = 0.5
-sky_8 = 7.0
-sky_dispersion = 0.001
+sky_dispersion = 0.01
 
 # WCS values to overwrite in the headers.  Set both to -1.0 to leave the values from the CFIS headers.
 PV1_1 = 1.0
@@ -178,9 +168,6 @@ write_flags_map = 0#1
 
 # Should we write out a noiseless version of the image?
 write_noiseless_file = 0
-
-# Should the PV coefficients in the headers be overwritten with 0s and 1s?
-overwrite_pv_values = 1
 
 # The effective diameter of the telescope (in meters).  The COSMOSCatalog class has everything in terms of the effective area of the HST, so we will use this to correct the flux.  3.6 meters according to website.
 telescope_diameter = 3.6
