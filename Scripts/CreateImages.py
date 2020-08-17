@@ -5,6 +5,7 @@ import galsim
 import math
 import numpy
 import os
+import pandas
 import random
 from shutil import copyfile
 import sys
@@ -68,7 +69,7 @@ def PositionRadiansToDegrees(pos):
 	return ra, dec
 
 def RemoveCommentsFromHeaderFile(headerFilename):
-	infile = open(headerFilename, 'r')
+	infile = open(headerFilename, 'r', encoding="utf-8")
 	lines = infile.readlines()
 	infile.close()
 
@@ -136,7 +137,7 @@ def AddGalaxyToImage(ra, minRA, dec, minDec, mag, hlr, sInd, e1, e2, galCount, p
 
 	# Calculate the number of counts by using the zero point.  m = -2.5*log_10(counts) + zero_point
 	# Zero point is in e- per sec; multiply by gain to convert to ADU per sec.
-	counts = variables['exposure_time'] * 10.0 ** ((mag - (variables['zero_point_r'] * variables['gain'])) / -2.5)
+	counts = (variables['exposure_time'] / variables['gain']) * 10.0 ** ((mag - variables['zero_point_r']) / -2.5)
 	galaxyOriginal = galaxy.withFlux(counts)
 	shape = numpy.matrix('%f %f' % (e1, e2))
         
@@ -509,38 +510,43 @@ numStars = 0
 
 numLinesRead = 0
 # Read in parameters from input catalog.
-with open(catalogFilename) as catalog:
-	for line in catalog:
-		numLinesRead += 1
+t = pandas.read_table(catalogFilename, sep=' ', header=1, names=['id', 'RA', 'Dec', 'rMag', 'HLR', 'SersicIndex', 'e1', 'e2', 'garbage'])
+df = t[(t['RA'] >= minRA - OVERLAP_CHECK_DEG) & (t['RA'] <= maxRA + OVERLAP_CHECK_DEG) & (t['Dec'] >= minDec - OVERLAP_CHECK_DEG) & (t['Dec'] <= maxDec + OVERLAP_CHECK_DEG)]
+#with open(catalogFilename) as catalog:
+#for line in catalog:
+for i in range(len(df)):
+	numLinesRead += 1
 
-		# Skip the first line.
-		if '#' in line:
-			continue 
+	# Skip the first line.
+	#if '#' in line:
+	#	continue 
 
-		# Create and add the galaxies to the image.
-		params = line.split()
-		dec = float(params[2])
-		ra = float(params[1])# * math.cos(math.radians(dec))
+	# Create and add the galaxies to the image.
+	#params = line.split()
+	#dec = float(params[2])
+	dec = df.iloc[i]['Dec']
+	#ra = float(params[1])# * math.cos(math.radians(dec))
+	ra = df.iloc[i]['RA']
 
-		# Check to see if this object is within the bounds of the observation.
-		if (ra >= minRA - OVERLAP_CHECK_DEG  and ra <= maxRA + OVERLAP_CHECK_DEG and dec >= minDec - OVERLAP_CHECK_DEG and dec <= maxDec + OVERLAP_CHECK_DEG):
-			# It is, so get the rest of the parameters.
-			mag = float(params[3])
-			hlr = float(params[4])
-			sInd = float(params[5])
-			e1 = float(params[6])
-			e2 = float(params[7])
+	# Check to see if this object is within the bounds of the observation.
+	#if (ra >= minRA - OVERLAP_CHECK_DEG  and ra <= maxRA + OVERLAP_CHECK_DEG and dec >= minDec - OVERLAP_CHECK_DEG and dec <= maxDec + OVERLAP_CHECK_DEG):
+		# It is, so get the rest of the parameters.
+	mag = df.iloc[i]['rMag'] #float(params[3])
+	hlr = df.iloc[i]['HLR'] #float(params[4])
+	sInd = df.iloc[i]['SersicIndex'] #float(params[5])
+	e1 = df.iloc[i]['e1'] #float(params[6])
+	e2 = df.iloc[i]['e2'] #float(params[7])
 		
-			# Determine if the object is a galaxy or star.
-			# TODO: Generalize this so that it can use flags from CFIS catalogs to determine whether galaxy or star.
-			note = 'Galaxy'
+	# Determine if the object is a galaxy or star.
+	# TODO: Generalize this so that it can use flags from CFIS catalogs to determine whether galaxy or star.
+	note = 'Galaxy'
 
-			if sInd == -1:
-				numStars += 1
-				note = 'Star'
+	if sInd == -1:
+		numStars += 1
+		note = 'Star'
 
-			AddGalaxyToImage(ra, minRA, dec, minDec, mag, hlr, sInd, e1, e2, galCount, psf, fullImages, psfImage, truthFiles, note, bcoImage, wcs, numRotations, rotationAngle)
-			galCount += 1
+	AddGalaxyToImage(ra, minRA, dec, minDec, mag, hlr, sInd, e1, e2, galCount, psf, fullImages, psfImage, truthFiles, note, bcoImage, wcs, numRotations, rotationAngle)
+	galCount += 1
 
 PrintAndLog('Number of lines in the complete catalog read: %i' % numLinesRead, logfile)
 truthFile.close()

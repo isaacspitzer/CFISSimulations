@@ -44,7 +44,9 @@ def NumGalaxiesPerSquareDegree(rMag):
 # Calculate the number of stars with a given magnitude per square degree.
 # This function is based off of Gao, S. (2013).
 def NumStarsPerSquareDegree(rMag):
-	return 0.1215512948 * math.exp(0.3680992382 * rMag)
+	#return 0.1215512948 * math.exp(0.3680992382 * rMag)
+	polys = np.array([-0.01052389, 0.55896414, -4.24642645])
+	return np.power(10.0, np.polyval(polys, rMag))
 
 # Integrated to correct the image area for the cos(dec) term.
 def AreaAdjustment(dec, width):
@@ -201,7 +203,7 @@ def AddStarToCatalog(starNum, mag, e1, e2, catalogFile, catWidth, catHeight):
 	posY = math.degrees(cosDist.rvs(size=1)[0])
 	#posY = random.uniform(0, catHeight) + variables['minDec']
 
-	catalogFile.write('%i %f %f %f %f %f %f %f\n' % (starNum, posX, posY, mag, imageSeeing, -1, e1, e2))
+	catalogFile.write('%i %f %f %f %f %f %f %f\n' % (starNum, posX, posY, mag, -1, -1, e1, e2))
 
 def cosFunction(dec):
 	return (np.radians(variables['maxRA']) - np.radians(variables['minRA'])) * np.cos(dec)
@@ -304,7 +306,7 @@ if variables['gal_density_target'] > 0.0:
 	galDensityBoostFactor = variables['gal_density_target'] / (quad(NumGalaxiesPerSquareDegree, 0, variables['mag_max'])[0] / 3600.0) #This constant is the integral of the number density function from 0->mag_max (Fenech Conti)
 
 catalogFile = open(catalogFilename, 'w')
-catalogFile.write('Gal#, X, Y, r-Mag, HLR,  Sersic Index, e1 (intrinsic), e2 (intrinsic) \n')
+catalogFile.write('Gal#, X, Y, r-Mag, HLR (arcsec),  Sersic Index, e1 (intrinsic), e2 (intrinsic) \n')
 
 loopCount = 0
 
@@ -396,7 +398,7 @@ for mag in partitionMags:
 	Log(msg, logfile)
 
 	for starNum in range(numStars):
-		AddStarToCatalog(starCount, mag, 0.0, 0.0, catalogFile, catWidth, catHeight)
+		AddStarToCatalog(starCount, mag, variables['stellar_e1'], variables['stellar_e2'], catalogFile, catWidth, catHeight)
 		starCount += 1
 
 catalogFile.close()

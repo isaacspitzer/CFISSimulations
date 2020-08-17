@@ -32,7 +32,7 @@ def GetRADecRange(centerRA, centerDec):
 def GenerateCatalog(runName):
     print('GENERATING MOCK CATALOG')
     start = time.time()
-    p1 = subprocess.Popen('python3 ./CreateCatalog.py %s' % runName, shell=True)
+    p1 = subprocess.Popen('python ./CreateCatalog.py %s' % runName, shell=True)
     p1.wait()
     end = time.time()
     
@@ -63,8 +63,8 @@ def CreateImages(runName, coreNum, numImagesPerCore, catalogName, ra, dec, heade
 	#crpix2 = ccd[1]
 
         # Run the script that creates the images and wait for it to finish.
-        print('python3.6 ./CreateImages.py %s %i %i %s %f %f %i %s %f %f' % (runName, coreNum, numImagesPerCore, catalogName, ra, dec, ccdNum, headerFile, imageSeeing, skyNoiseLevel))
-        p1 = subprocess.Popen('python3.6 ./CreateImages.py %s %i %i %s %f %f %i %s %f %f' % (runName, coreNum, numImagesPerCore, catalogName, ra, dec, ccdNum, headerFile, imageSeeing, skyNoiseLevel), shell=True)
+        print('python ./CreateImages.py %s %i %i %s %f %f %i %s %f %f' % (runName, coreNum, numImagesPerCore, catalogName, ra, dec, ccdNum, headerFile, imageSeeing, skyNoiseLevel))
+        p1 = subprocess.Popen('python ./CreateImages.py %s %i %i %s %f %f %i %s %f %f' % (runName, coreNum, numImagesPerCore, catalogName, ra, dec, ccdNum, headerFile, imageSeeing, skyNoiseLevel), shell=True)
         p1.wait()
 
         if int(variables['createSextractorCatalog']) == 1:
@@ -83,22 +83,22 @@ def CreateImages(runName, coreNum, numImagesPerCore, catalogName, ra, dec, heade
 # Run Sextractor to create a catalog of detected objects.
 def CreateCatalog(runName, coreNum, imageNum, ccdNum):
     print('Running Sextractor on the simulated image.')
-    p1 = subprocess.Popen('python3 ./CreateSextractorCatalogs.py %s %i %i %i' % (runName, coreNum, imageNum, ccdNum), shell=True)
+    p1 = subprocess.Popen('python ./CreateSextractorCatalogs.py %s %i %i %i' % (runName, coreNum, imageNum, ccdNum), shell=True)
     p1.wait()
 
 # Compare the Sextractor catalog to the known catalog.
 def CompareCatalogs(runName, coreNum, imageNum, ccdNum):
     print('Comparing catalogs.')
-    p1 = subprocess.Popen('python3 ./MatchCatalogs.py %s %i %i %i' % (runName, coreNum, imageNum, ccdNum), shell=True)
+    p1 = subprocess.Popen('python ./MatchCatalogs.py %s %i %i %i' % (runName, coreNum, imageNum, ccdNum), shell=True)
     p1.wait()
     
 # Compare the output of the Sextractor catalog, with the Sextractor catalog of a real CFIS image.
 def CompareWithCFIS(runName, coreNum, imageNum, ccdNum):
-        p1 = subprocess.Popen('python3 ./CompareWithCFIS.py %s %i %i %i' % (runName, coreNum, imageNum, ccdNum), shell=True)
+        p1 = subprocess.Popen('python ./CompareWithCFIS.py %s %i %i %i' % (runName, coreNum, imageNum, ccdNum), shell=True)
         p1.wait()
         
 def BulkCompareWithCFIS(runName, coreNum, imageNum):
-        p1 = subprocess.Popen('python3 ./BulkCompareWithCFIS.py %s %i %i' % (runName, coreNum, imageNum), shell=True)
+        p1 = subprocess.Popen('python ./BulkCompareWithCFIS.py %s %i %i' % (runName, coreNum, imageNum), shell=True)
         p1.wait()
 
 # Reads a file containing a list of the RA and Decs of multiple observations.  Returns a list of the [RA, Dec] pairs.
@@ -183,7 +183,10 @@ elif variables['useObservingList'] == 1:
 	observations = GetObservations(variables['observationsList'], int(variables['raIndex']), int(variables['decIndex']))
 	numImages = len(observations)
 else:
+	print('Looking to headerPath: %s' % variables['headerPath'])
 	observations = GetObservationsFromHeaders(variables['headerPath'])
+	print('observations:')
+	print(observations)
 	numImages = len(observations)
 
 #ccds = [[0, 0]]
@@ -192,8 +195,12 @@ else:
 
 numCores = int(variables['numCores'])
 
+print(numCores)
+print(numImages)
 if (numImages < numCores):
 	numCores = numImages
+
+#print('numImagesPerCore = int(%i / %i)' % (numImages, numCores))
 
 numImagesPerCore = int(numImages / numCores)
 
@@ -258,3 +265,6 @@ elif int(variables['compareWithCFISExposure']) == 1:
 end = time.time()
 hours = ((end - start) / 60.0) / 60.0
 print("The process took %f hours" % hours)
+outfile = open('./ProcessDuration.txt', 'w')
+outfile.write("The process took %f hours" % hours)
+outfile.close()
