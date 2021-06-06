@@ -1,0 +1,1 @@
+Catalog took 96.003267 seconds.

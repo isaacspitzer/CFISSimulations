@@ -216,16 +216,15 @@ def CalculateCatalogArea():
 ###############################################################################################################
 
 runName = sys.argv[1]
+variables = ReadVariables()
 
 # Create the folder for the images.
-outfolder = '../Runs/%s/Images/' % (runName)
+outfolder = '%s%s/Images/' % (variables['outdir'], runName)
 if not os.path.isdir(outfolder):
 	try:
 		os.makedirs(outfolder)
 	except:
 		print('Output folder was created by another process.')
-
-variables = ReadVariables()
 
 #####################################################################
 # The following code block allows me to draw random number from a cos
@@ -250,15 +249,15 @@ class CosDistribution(rv_continuous):
 # End of cos distribution code block.
 #####################################################################
 
-catalogFilename = '../Runs/%s/SimulatedCatalog.cat' % runName
+catalogFilename = '%s%s/SimulatedCatalog.cat' % (variables['outdir'], runName)
 
-logfile = open('../Runs/%s/log-CreateCatalog.txt' % (runName), 'w')
+logfile = open('%s%s/log-CreateCatalog.txt' % (variables['outdir'], runName), 'w')
 msg = 'Creating output folders'
 PrintAndLog(msg, logfile)
 
 # Make a local copy of the config file for future reference.
-if not os.path.isfile('../Runs/%s/Variables.cfg' % runName):
-	copyfile('Variables.cfg', '../Runs/%s/Variables.cfg' % runName)
+if not os.path.isfile('%s%s/Variables.cfg' % (variables['outdir'], runName)):
+	copyfile('Variables.cfg', '%s%s/Variables.cfg' % (variables['outdir'], runName))
 
 msg = 'Setting up Variables'
 PrintAndLog(msg, logfile)

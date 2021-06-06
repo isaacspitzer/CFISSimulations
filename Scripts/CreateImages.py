@@ -14,6 +14,7 @@ import glob
 import scipy.stats as stats
 from UtilityFunctions import ReadVariables
 import string
+import numpy as np
 
 # Class for galaxy models.
 class Galaxy:
@@ -52,14 +53,20 @@ def Log(msg, logfile):
     
 # Converts the 'e1s' and 'e2s' variables into lists of paired shear values.
 def GenerateShearValues(e1s, e2s):
+        #print('***************************************************************************************')
+        #print('****************************************************************************************')
+        #print(e1s)
+        #print(e2s)
         e1sStr = e1s.split(',')
         e2sStr = e2s.split(',')
+        #print(e1sStr)
         
         shears = []
         
         for i in range(len(e1sStr)):
                 shears.append([float(e1sStr[i]), float(e2sStr[i])])
             
+        #print(shears)
         return shears
 
 # Takes a Galsim PositionD in radians and returns the RA and Dec in degrees.
@@ -82,22 +89,25 @@ def RemoveCommentsFromHeaderFile(headerFilename):
 
 	outfile.close()
 
-
+# Overwrite the PV values in the header with the values listed in the config file.
 def CheckForPVValues(variables, gsHeader):
-	setValue = False
-	for i in range(2):
-		for j in range(11):
-			if 'PV%i_%i' % (i + 1, j) in variables:
-				setValue = True
-				break
+	num1s = [1, 2]
+	num2s = [0, 1, 2, 4, 5, 6, 7, 8, 9, 10]
 
-	if setValue:
-		for i in range(2):
-			for j in range(11):
-				if 'PV%i_%i' % (i + 1, j) in variables:
-					gsHeader['PV%i_%i' % (i + 1, j)] = variables['PV%i_%i' % (i + 1, j)]
-				else:
-					gsHeader['PV%i_%i' % (i + 1, j)] = 0.0
+	for num1 in num1s:
+		for num2 in num2s:
+			keyName = 'PV%i_%i' % (num1, num2)
+			gsHeader[keyName] = variables[keyName]
+
+def FlipSignCDValues(variables, gsHeader):
+	gsHeader['CD1_2'] = -1.0 * gsHeader['CD1_2']
+	gsHeader['CD2_1'] = -1.0 * gsHeader['CD2_1']
+
+def CheckForCDValues(variables, gsHeader):
+	for i in [1, 2]:
+		for j in [1, 2]:
+			keyName = 'CD%i_%i' % (i, j)
+			gsHeader[keyName] = variables[keyName]
 
 def GetOutputDirectory(rotationNum, shearNum, runName, observationName, imagedir):
 	outdir = imagedir.replace('<DATE_TIME>', '%s' % runName).replace('<SHEAR_NUM>', '%i' % shearNum).replace('<ROTATION_NUM>', '%i' % rotationNum)
@@ -107,8 +117,10 @@ def GetOutputDirectory(rotationNum, shearNum, runName, observationName, imagedir
 	return outdir
 
 # Takes a set of model parameters, generates a galaxy and adds it to the provided image.
-def AddGalaxyToImage(ra, minRA, dec, minDec, mag, hlr, sInd, e1, e2, galCount, psf, fullImages, psfImage, truthFiles, note, bcoImage, wcs, numRotations, rotationAngle):
+def AddGalaxyToImage(ra, minRA, dec, minDec, mag, hlr, sInd, e1, e2, galCount, psf, fullImages, psfImage, truthFiles, note, bcoImage, wcs, numRotations, rotationAngle, axisRatio, positionAngle, useAxisRatio):
+	#print('%f %f %f %f %f %f %f %r' % (ra, dec, mag, hlr, sInd, axisRatio, positionAngle, useAxisRatio))
 	galaxy = None
+	posAngle = positionAngle
 
 	# Calculate the location of the galaxy in pixel space.
 	worldPosition = galsim.CelestialCoord(ra=ra * galsim.degrees, dec=dec * galsim.degrees)
@@ -141,25 +153,34 @@ def AddGalaxyToImage(ra, minRA, dec, minDec, mag, hlr, sInd, e1, e2, galCount, p
 	galaxyOriginal = galaxy.withFlux(counts)
 	shape = numpy.matrix('%f %f' % (e1, e2))
         
+	#for k in range(shears):
 	for j in range(numRotations):
 		# Give the galaxy it's intrinsic shape.
-		cos2Phi = numpy.cos(2.0 * rotationAngle * j)
-		sin2Phi = numpy.sin(2.0 * rotationAngle * j)
-		rotation = numpy.matrix('%f %f;%f %f' % (-1.0 * cos2Phi, -1.0 * sin2Phi, sin2Phi, -1.0 * cos2Phi))
-		newShape = shape.dot(rotation)
+		if useAxisRatio == False:
+			cos2Phi = numpy.cos(2.0 * rotationAngle * j)
+			sin2Phi = numpy.sin(2.0 * rotationAngle * j)
+			rotation = numpy.matrix('%f %f;%f %f' % (-1.0 * cos2Phi, -1.0 * sin2Phi, sin2Phi, -1.0 * cos2Phi))
+			newShape = shape.dot(rotation)
 		
-		newE1 = newShape.item(0)
-		newE2 = newShape.item(1)
+			newE1 = newShape.item(0)
+			newE2 = newShape.item(1)
 
-		gal_shape = galsim.Shear(g1=newE1, g2=newE2)
-		galaxy = galaxyOriginal.shear(gal_shape)
+			gal_shape = galsim.Shear(e1=newE1, e2=newE2) #galsim.Shear(g1=newE1, g2=newE2)
+			galaxy = galaxyOriginal.shear(gal_shape)
+		else:
+			#print('Using axis ratio')
+			posAngle = np.radians(positionAngle) + (rotationAngle * float(j))
+			#print('Before: %f, After: %f' % (positionAngle, np.degrees(posAngle)))
+			#print('Rotation Angle: %f, j: %f' % (rotationAngle, j))
+			gal_shape = galsim.Shear(q=axisRatio, beta=posAngle * galsim.radians)
+			galaxy = galaxyOriginal.shear(gal_shape)
 
 		for i in range(numCopiesOfImage):
 			final = None
 
-        	        # Apply the shear (the actual shear, not the intrinsic shape) and convolve with the PSF.
+       		        # Apply the shear (the actual shear, not the intrinsic shape) and convolve with the PSF.
 			if note != 'Star':
-				shearedGalaxy = galaxy.shear(g1 = shears[i][0], g2 = shears[i][1])
+				shearedGalaxy = galaxy.shear(e1=float(shears[i][0]), e2=float(shears[i][1])) #galaxy.shear(g1 = shears[i][0], g2 = shears[i][1])
 				final = galsim.Convolve([psf, shearedGalaxy], gsparams = big_fft_params)
 			else:
 				# If the object is a star, it doesn't need to be sheared or convolved.
@@ -213,7 +234,7 @@ def AddGalaxyToImage(ra, minRA, dec, minDec, mag, hlr, sInd, e1, e2, galCount, p
 			
 				# Write the galaxy to the output catalog.  Since multiple images zill have the same set of catalogs, only write out once.
 				if j == 0:
-					truthFiles[j].write('%i %f %f %f %f %f %f %f %s %f %f\n' % (galCount, imagePosition.x, imagePosition.y, mag, hlr, sInd, e1, e2, note, ra, dec))
+					truthFiles[j].write('%i %f %f %f %f %f %f %f %s %f %f %f %f\n' % (galCount, imagePosition.x, imagePosition.y, mag, hlr, sInd, e1, e2, note, ra, dec, axisRatio, np.degrees(positionAngle)))
 
 # Get the core # and number of images per core from the command line arguments.
 runName = sys.argv[1]
@@ -257,14 +278,14 @@ msg = 'Creating output folders'
 PrintAndLog(msg, logfile)
 
 try:
-	os.makedirs('../Runs/%s/Images/Catalogs/' % runName)
-	os.makedirs('../Runs/%s/Headers/' % runName)
+	os.makedirs('%s%s/Images/Catalogs/' % (variables['outdir'], runName))
+	os.makedirs('%s%s/Headers/' % (variables['outdir'], runName))
 	
 except:
 	PrintAndLog('Catalog folder already created by another process.', logfile)
 
 numCopiesOfImage = int(variables['numCopiesOfImage'])
-if numCopiesOfImage > 1:
+if numCopiesOfImage > 1 or int(variables['multipleShears']) > 0:
 	shears = GenerateShearValues(variables['e1s'], variables['e2s'])
 else:
 	shears = [[variables['e1s'], variables['e2s']]]
@@ -347,6 +368,7 @@ if 'headerPath' in variables:
 	#headerTextFile.close()
 	RemoveCommentsFromHeaderFile(variables['headerPath'] + headerFile.split('/')[-1].replace('C.sub.fits', '.head'))
 	#newHead = fits.Header.fromtextfile(variables['headerPath'] + headerFile.split('/')[-1].replace('C.sub.fits', '_NoComments.head'), endcard=False, padding=False)
+	print(variables['headerPath'] + headerFile.split('/')[-1].replace('C.sub.fits', '.head'))
 	newHead = fits.Header.fromtextfile(variables['headerPath'] + headerFile.split('/')[-1].replace('C.sub.fits', '.head'))
 	cfisHeader = newHead
 
@@ -394,16 +416,22 @@ cfisHeader['SEEING'] = imageSeeing
 cfisHeader['GAIN'] = variables['gain']
 cfisHeader['MAGZ'] = variables['zero_point_r']
 #cfisHeader.totextfile(variables['headerPath'] + headerFile.split('/')[-1].replace('C.sub.fits', '.head'), endcard=True, overwrite=True)
-cfisHeader.totextfile('../Runs/%s/Headers/' % (runName) + headerFile.split('/')[-1].replace('C.sub.fits', '.head'), endcard=True, overwrite=True)
 
 if variables['overwrite_pv_values'] > 0.0:
-	#CheckForPVValues(variables, gsHeader)
 	CheckForPVValues(variables, cfisHeader)
+
+if variables['overwrite_cd_values'] > 0.0:
+	CheckForCDValues(variables, cfisHeader)
+
+if variables['cd_flip_sign_offdiagonal_terms'] > 0.0:
+	FlipSignCDValues(variables, cfisHeader)
 
 gsHeader = galsim.FitsHeader(header = cfisHeader)
 gsHeader['SEEING'] = imageSeeing
 gsHeader['GAIN'] = variables['gain']
 gsHeader['MAGZ'] = variables['zero_point_r']
+
+cfisHeader.totextfile('%s%s/Headers/' % (variables['outdir'], runName) + headerFile.split('/')[-1].replace('C.sub.fits', '.head'), endcard=True, overwrite=True)
 #gsHeader['BSCALE'] = 1.0
 #gsHeader['BZERO'] = 0.0
 #gsHeader.write()
@@ -496,9 +524,9 @@ inputFilename = headerFile.replace('./', '').replace('.fits', '')
 
 #for i in range(numRotations):
 if observationName != 'None':
-	truthFile = open('../Runs/%s/Images/Catalogs/%s-Image-Catalog.txt' % (runName, inputFilename), 'w')
+	truthFile = open('%s%s/Images/Catalogs/%s-Image-Catalog.txt' % (variables['outdir'], runName, inputFilename), 'w')
 else:
-	truthFile = open('../Runs/%s/Images/Catalogs/Image-Catalog-%i-%i-%i-%s.txt' % (runName, coreNum, imageNum, ccdNum, inputFilename), 'w')		
+	truthFile = open('%s%s/Images/Catalogs/Image-Catalog-%i-%i-%i-%s.txt' % (variables['outdir'], runName, coreNum, imageNum, ccdNum, inputFilename), 'w')		
 		
 truthFile.write('Gal#, X, Y, r-Mag, HLR,  Sersic Index, e1 (intrinsic), e2 (intrinsic) \n')
 truthFiles.append(truthFile)
@@ -507,10 +535,11 @@ truthFiles.append(truthFile)
 psfHLR = imageSeeing
 psf = galsim.Moffat(beta = 3, fwhm = psfHLR)
 numStars = 0
+numGals = 0
 
 numLinesRead = 0
 # Read in parameters from input catalog.
-t = pandas.read_table(catalogFilename, sep=' ', header=1, names=['id', 'RA', 'Dec', 'rMag', 'HLR', 'SersicIndex', 'e1', 'e2', 'garbage'])
+t = pandas.read_table(catalogFilename, sep=' ', header=1, names=['id', 'RA', 'Dec', 'rMag', 'HLR', 'SersicIndex', 'e1', 'e2', 'axisRatio', 'positionAngle']) #, 'garbage'])
 df = t[(t['RA'] >= minRA - OVERLAP_CHECK_DEG) & (t['RA'] <= maxRA + OVERLAP_CHECK_DEG) & (t['Dec'] >= minDec - OVERLAP_CHECK_DEG) & (t['Dec'] <= maxDec + OVERLAP_CHECK_DEG)]
 #with open(catalogFilename) as catalog:
 #for line in catalog:
@@ -536,7 +565,16 @@ for i in range(len(df)):
 	sInd = df.iloc[i]['SersicIndex'] #float(params[5])
 	e1 = df.iloc[i]['e1'] #float(params[6])
 	e2 = df.iloc[i]['e2'] #float(params[7])
-		
+	axisRatio = df.iloc[i]['axisRatio']
+	positionAngle = df.iloc[i]['positionAngle']
+
+	#print(df.iloc[i])
+	#print('Axis Ratio: %f, Position Angle: %f' % (axisRatio, positionAngle))
+	useAxisRatio = False
+	if hlr > 0.0 and axisRatio > 0.0:
+		#print('useAxisRatio = True')
+		useAxisRatio = True
+
 	# Determine if the object is a galaxy or star.
 	# TODO: Generalize this so that it can use flags from CFIS catalogs to determine whether galaxy or star.
 	note = 'Galaxy'
@@ -544,14 +582,17 @@ for i in range(len(df)):
 	if sInd == -1:
 		numStars += 1
 		note = 'Star'
+	else:
+		numGals += 1
 
-	AddGalaxyToImage(ra, minRA, dec, minDec, mag, hlr, sInd, e1, e2, galCount, psf, fullImages, psfImage, truthFiles, note, bcoImage, wcs, numRotations, rotationAngle)
+	AddGalaxyToImage(ra, minRA, dec, minDec, mag, hlr, sInd, e1, e2, galCount, psf, fullImages, psfImage, truthFiles, note, bcoImage, wcs, numRotations, rotationAngle, axisRatio, positionAngle, useAxisRatio)
 	galCount += 1
 
 PrintAndLog('Number of lines in the complete catalog read: %i' % numLinesRead, logfile)
 truthFile.close()
 
 print('%i stars in this image.' % numStars)
+print('%i galaxies in this image.' % numGals)
 
 noise = galsim.PoissonNoise(rng, sky_level=skyNoiseLevel)
 noiseImage = galsim.ImageF(variables['image_size_x'], variables['image_size_y'])
