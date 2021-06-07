@@ -1,0 +1,51 @@
+HISTORY   Astrometric solution by SCAMP version 2.7.7 (2019-01-15)
+COMMENT   (c) 2010-2018 Sorbonne Université/Université de Bordeaux/CNRS
+COMMENT   
+EQUINOX =        2000.00000000 / Mean equinox                                  
+RADESYS = 'ICRS    '           / Astrometric system                            
+CTYPE1  = 'RA---TAN'           / WCS projection type for this axis             
+CTYPE2  = 'DEC--TAN'           / WCS projection type for this axis             
+CUNIT1  = 'deg     '           / Axis unit                                     
+CUNIT2  = 'deg     '           / Axis unit                                     
+CRVAL1  =   2.099638406407E+02 / World coordinate on this axis                 
+CRVAL2  =   5.416458261694E+01 / World coordinate on this axis                 
+CRPIX1  =   3.051586342315E+03 / Reference pixel on this axis                  
+CRPIX2  =  -5.223633053566E+03 / Reference pixel on this axis                  
+CD1_1   =  -5.175052322896E-05 / Linear projection matrix                      
+CD1_2   =  -3.693519989177E-07 / Linear projection matrix                      
+CD2_1   =  -2.276284428191E-07 / Linear projection matrix                      
+CD2_2   =   5.144352664840E-05 / Linear projection matrix                      
+PV1_0   =   1.916603055075E-04 / Projection distortion parameter               
+PV1_1   =   9.967569428149E-01 / Projection distortion parameter               
+PV1_2   =  -3.001334791512E-03 / Projection distortion parameter               
+PV1_4   =   2.078173113513E-02 / Projection distortion parameter               
+PV1_5   =   2.652947435217E-02 / Projection distortion parameter               
+PV1_6   =   9.058220276073E-03 / Projection distortion parameter               
+PV1_7   =  -1.056386909848E-01 / Projection distortion parameter               
+PV1_8   =   1.282314938184E-02 / Projection distortion parameter               
+PV1_9   =  -5.639280532977E-02 / Projection distortion parameter               
+PV1_10  =  -5.481530362129E-03 / Projection distortion parameter               
+PV2_0   =  -6.021462807785E-03 / Projection distortion parameter               
+PV2_1   =   1.035048673705E+00 / Projection distortion parameter               
+PV2_2   =   1.538658250016E-02 / Projection distortion parameter               
+PV2_4   =  -5.776647934074E-02 / Projection distortion parameter               
+PV2_5   =  -6.333881218545E-02 / Projection distortion parameter               
+PV2_6   =  -3.049107807161E-02 / Projection distortion parameter               
+PV2_7   =   2.196631559873E-02 / Projection distortion parameter               
+PV2_8   =   7.385236923777E-02 / Projection distortion parameter               
+PV2_9   =   1.805058977862E-03 / Projection distortion parameter               
+PV2_10  =   9.107363093405E-02 / Projection distortion parameter               
+FGROUPNO=                    1 / SCAMP field group label                       
+ASTIRMS1=   2.007097617555E-05 / Astrom. dispersion RMS (intern., high S/N)    
+ASTIRMS2=   1.928043588357E-05 / Astrom. dispersion RMS (intern., high S/N)    
+ASTRRMS1=   4.930499852429E-05 / Astrom. dispersion RMS (ref., high S/N)       
+ASTRRMS2=   4.399854759586E-05 / Astrom. dispersion RMS (ref., high S/N)       
+ASTINST =                    1 / SCAMP astrometric instrument label            
+FLSCALE =   2.887792166460E-01 / SCAMP relative flux scale                     
+MAGZEROP=          30.00000000 / SCAMP zero-point                              
+PHOTIRMS=           0.06330781 / mag dispersion RMS (internal, high S/N)       
+PHOTINST=                    1 / SCAMP photometric instrument label            
+PHOTLINK=                    F / True if linked to a photometric field         
+RZP     =            -0.013487 / THELI relative zeropoint
+FLXSCALE=         8.222346E-03 / THELI relative flux scale
+END
