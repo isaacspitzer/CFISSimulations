@@ -129,10 +129,10 @@ gal_density_target = 75.0 #65.0 #55.0 #45.0 #25.0 #16.0#-1
 
 # Number of rotations to use for each galaxy model to reduce shape noise.  Typically set to 4.
 # num_rotations * rotation_angle should equal 180
-num_rotations = 2
+num_rotations = 4
 
 # Angle to rotate each copy of the galaxy by (degrees).  Typically set to 45.0.
-rotation_angle = 90.0
+rotation_angle = 45.0
 
 # r band zero-point is 26.74 e per sec OR 26.22 ADU per sec
 zero_point_r = 26.74

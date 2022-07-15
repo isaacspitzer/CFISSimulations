@@ -1,1 +1,1 @@
-Image generation took 194.405225 seconds.
+Image generation took 3.669778 seconds.

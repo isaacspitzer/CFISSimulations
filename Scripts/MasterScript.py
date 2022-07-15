@@ -1,8 +1,11 @@
+#!/usr/bin/python3
+
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
 import datetime
 import glob
+import fileinput
 import os
 #import pyfits
 import random
@@ -166,9 +169,32 @@ def ReadCCDLayout(ccdLayoutFilename):
 
 	return ccds
 
+def RewriteVariables(tileName):
+	for line in fileinput.input('./Variables.cfg', inplace=1):
+		outline = line
+		if 'observationName =' in line:
+			outline = 'observationName = %s \n' % (tileName)
+		elif 'observationsList =' in line:
+			outline = 'observationsList = ./ObservingList/%s_ObservingList.txt \n' % tileName
+		elif 'dataPath =' in line:
+			outline = 'dataPath = ../../Data/Ludo/%s/single_V1.1.0A/ \n' % tileName
+		elif 'headerPath =' in line:
+			outline = 'headerPath = /home/ispitzer/CFISSimulations/Data/%s/headers_V1.1.0A/ \n' % tileName
+
+		sys.stdout.write(outline)
+
 ##############################################################################################
 ##### BEGINNING OF SCRIPT ####################################################################
 ##############################################################################################
+
+os.chdir('/home/ispitzer/CFISSimulations/Scripts/')
+
+TILE_NAME = ''
+RUN_NUM = 0
+if len(sys.argv) > 1:
+	TILE_NAME = sys.argv[1]
+	RUN_NUM = sys.argv[2]
+	RewriteVariables(TILE_NAME)
 
 # Read in the variables from the config file into a dictionary.
 variables = ReadVariables()
@@ -176,6 +202,9 @@ variables = ReadVariables()
 # Calculate the number of simulations to be created by each core.
 numImages = 1
 observations = []
+print('useObservingList')
+print(variables['useObservingList'])
+
 if variables['useObservingList'] == 0:
 	numImages = variables['numImages']
 	observations = GetRADecsFromVariables()
@@ -204,11 +233,11 @@ if (numImages < numCores):
 
 numImagesPerCore = int(numImages / numCores)
 
-runName = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")
+runName = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M") + '_' + str(RUN_NUM)
 
 # If there's already a directory created with this timestamp, wait a minute...
-while os.path.isdir('./Runs/%s' % runName):
-    runName = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")
+while os.path.isdir('%s%s' % (variables['outdir'], runName)):
+    runName = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M") + '_' + str(RUN_NUM)
 
 start = time.time()
 catalogName = ''
@@ -218,7 +247,7 @@ if int(variables['generateCatalog']) == 1:
 	GenerateCatalog(runName)
 
 	#Will need to update this line to match the actual name of the output catalog.
-	catalogName = '../Runs/%s/SimulatedCatalog.cat' % runName
+	catalogName = '%s%s/SimulatedCatalog.cat' % (variables['outdir'], runName)
 else:
 	catalogName = variables['existingCatalog']
 
@@ -261,6 +290,17 @@ if int(variables['compareWithMultipleCFISExposures']) == 1:
     BulkCompareWithCFIS(runName, coreNum, numImagesPerCore)
 elif int(variables['compareWithCFISExposure']) == 1:
     CompareWithCFIS(runName, coreNum, numImagesPerCore)
+
+if len(sys.argv) > 1:
+	# Now run MakeCoadds.py to create all of the coadds.
+	os.chdir('/cfis/terben/CFIS2000-galsim/CFISCOLLAB_V1.1.0A')
+	cfisTile = '%s_r.MP9602.V1.1.0A.swarp.cut.fits' % TILE_NAME
+	tileRaDec = TILE_NAME.replace('CFIS_', '')
+	inputList = 'inputlist_all_%s.txt' % (tileRaDec)
+	cmd = 'python3 MakeCoadds.py %s %s %s %s %s' % (TILE_NAME, cfisTile, RUN_NUM, runName, inputList)
+	p1 = subprocess.Popen(cmd, shell=True)
+	p1.wait()
+	os.chdir('/home/ispitzer/CFISSimulations/Scripts')
 
 end = time.time()
 hours = ((end - start) / 60.0) / 60.0
